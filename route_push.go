@@ -256,6 +256,18 @@ func push(params map[string]interface{}) (int, error) {
 		msg.Body = "Empty Message"
 	}
 
+	// Gemini verification code analysis: set copy/automaticallyCopy if a code is found
+	if geminiKey != "" {
+		_, hasCopy := msg.ExtParams["copy"]
+		_, hasAutoCopy := msg.ExtParams["automaticallycopy"]
+		if !hasCopy && !hasAutoCopy && msg.Body != "" && msg.Body != "Empty Message" {
+			if code := analyzeVerificationCode(msg.Body); code != "" {
+				msg.ExtParams["copy"] = code
+				msg.ExtParams["automaticallycopy"] = "1"
+			}
+		}
+	}
+
 	deviceToken, err := db.DeviceTokenByKey(msg.DeviceKey)
 	if err != nil {
 		return 400, fmt.Errorf("failed to get device token: %v", err)
@@ -272,5 +284,9 @@ func push(params map[string]interface{}) (int, error) {
 	if err != nil {
 		return 500, fmt.Errorf("push failed: %v", err)
 	}
+
+	// Fire webhook asynchronously after successful push
+	fireWebhook(&msg)
+
 	return 200, nil
 }

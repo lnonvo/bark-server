@@ -50,6 +50,8 @@ func runServer(c *cli.Context) error {
 	fiberApp := createFiberApp(c, network)
 	setupRouter(c, fiberApp)
 	initializeDatabase(c)
+	SetGeminiConfig(c.String("gemini-key"), c.String("gemini-model"))
+	SetWebhookURL(c.String("webhook-url"))
 	setupGracefulShutdown(fiberApp)
 	return startServer(c, fiberApp, network)
 }
@@ -321,6 +323,24 @@ func getAppFlags() []cli.Flag {
 			EnvVars: []string{"BARK_SERVER_IDLE_TIMEOUT"},
 			Value:   10 * time.Second,
 			Hidden:  true,
+		},
+		&cli.StringFlag{
+			Name:    "gemini-key",
+			Usage:   "Google Gemini API key for verification code analysis",
+			EnvVars: []string{"BARK_SERVER_GEMINI_KEY"},
+			Value:   "",
+		},
+		&cli.StringFlag{
+			Name:    "gemini-model",
+			Usage:   "Google Gemini model name",
+			EnvVars: []string{"BARK_SERVER_GEMINI_MODEL"},
+			Value:   "gemini-2.0-flash",
+		},
+		&cli.StringFlag{
+			Name:    "webhook-url",
+			Usage:   "Webhook URL to POST push message details after successful delivery",
+			EnvVars: []string{"BARK_SERVER_WEBHOOK_URL"},
+			Value:   "",
 		},
 	}
 }
