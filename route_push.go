@@ -256,14 +256,23 @@ func push(params map[string]interface{}) (int, error) {
 		msg.Body = "Empty Message"
 	}
 
-	// Gemini verification code analysis: set copy/automaticallyCopy if a code is found
+	// Gemini analysis: verification code extraction and notification grouping
 	if geminiKey != "" {
+		// Verification code analysis: set copy/autoCopy if a code is found
 		_, hasCopy := msg.ExtParams["copy"]
 		_, hasAutoCopy := msg.ExtParams["automaticallycopy"]
 		if !hasCopy && !hasAutoCopy && msg.Body != "" && msg.Body != "Empty Message" {
 			if code := analyzeVerificationCode(msg.Body); code != "" {
 				msg.ExtParams["copy"] = code
-				msg.ExtParams["automaticallycopy"] = "1"
+				msg.ExtParams["autoCopy"] = "1"
+			}
+		}
+
+		// Notification grouping: categorize by Eisenhower Matrix if group is not already set
+		_, hasGroup := msg.ExtParams["group"]
+		if !hasGroup {
+			if group := analyzeNotificationGroup(msg.Title, msg.Body); group != "" {
+				msg.ExtParams["group"] = group
 			}
 		}
 	}
