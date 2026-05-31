@@ -6,7 +6,7 @@ WORKDIR /go/src/github.com/finb/bark-server
 
 RUN set -ex \
     && apk add git gcc libc-dev \
-    && BUILD_VERSION=$(git describe --tags) \
+    && BUILD_VERSION=$(git describe --tags 2>/dev/null || git rev-parse --short HEAD) \
     && BUILD_DATE=$(date "+%F %T") \
     && COMMIT_SHA1=$(git rev-parse HEAD) \
     && go install -trimpath -ldflags \

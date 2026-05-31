@@ -256,23 +256,22 @@ func push(params map[string]interface{}) (int, error) {
 		msg.Body = "Empty Message"
 	}
 
-	// Gemini analysis: verification code extraction and notification grouping
-	if geminiKey != "" {
-		// Verification code analysis: set copy/autoCopy if a code is found
+	// Gemini analysis: verification code extraction + notification grouping in one call
+	if geminiKey != "" && msg.Body != "" && msg.Body != "Empty Message" {
 		_, hasCopy := msg.ExtParams["copy"]
-		_, hasAutoCopy := msg.ExtParams["automaticallycopy"]
-		if !hasCopy && !hasAutoCopy && msg.Body != "" && msg.Body != "Empty Message" {
-			if code := analyzeVerificationCode(msg.Body); code != "" {
-				msg.ExtParams["copy"] = code
+		_, hasAutoCopy := msg.ExtParams["autoCopy"]
+		needCode := !hasCopy && !hasAutoCopy
+		_, hasGroup := msg.ExtParams["group"]
+		needGroup := !hasGroup
+
+		if needCode || needGroup {
+			result := analyzeNotification(msg.Title, msg.Body, needCode, needGroup)
+			if result.Code != "" {
+				msg.ExtParams["copy"] = result.Code
 				msg.ExtParams["autoCopy"] = "1"
 			}
-		}
-
-		// Notification grouping: categorize by Eisenhower Matrix if group is not already set
-		_, hasGroup := msg.ExtParams["group"]
-		if !hasGroup {
-			if group := analyzeNotificationGroup(msg.Title, msg.Body); group != "" {
-				msg.ExtParams["group"] = group
+			if result.Group != "" {
+				msg.ExtParams["group"] = result.Group
 			}
 		}
 	}
