@@ -28,8 +28,14 @@ RUN echo 'hosts: files dns' > /etc/nsswitch.conf
 # default timezon
 # override it with `--build-arg TIMEZONE=xxxx`
 ARG TIMEZONE=Asia/Shanghai
+ARG GEMINI_KEY=""
+ARG GEMINI_MODEL="gemini-2.0-flash"
+ARG WEBHOOK_URL=""
 
 ENV TZ=${TIMEZONE}
+ENV BARK_SERVER_GEMINI_KEY=${GEMINI_KEY}
+ENV BARK_SERVER_GEMINI_MODEL=${GEMINI_MODEL}
+ENV BARK_SERVER_WEBHOOK_URL=${WEBHOOK_URL}
 
 RUN set -ex \
     && apk upgrade \
