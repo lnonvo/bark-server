@@ -29,7 +29,7 @@ RUN echo 'hosts: files dns' > /etc/nsswitch.conf
 # override it with `--build-arg TIMEZONE=xxxx`
 ARG TIMEZONE=Asia/Shanghai
 ARG GEMINI_KEY=""
-ARG GEMINI_MODEL="gemini-2.0-flash"
+ARG GEMINI_MODEL="gemini-3-flash"
 ARG WEBHOOK_URL=""
 
 ENV TZ=${TIMEZONE}
