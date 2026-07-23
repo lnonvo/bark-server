@@ -50,6 +50,7 @@ func runServer(c *cli.Context) error {
 	fiberApp := createFiberApp(c, network)
 	setupRouter(c, fiberApp)
 	initializeDatabase(c)
+	logDatabaseStatus()
 	SetGeminiConfig(c.String("gemini-key"), c.String("gemini-model"))
 	SetWebhookURL(c.String("webhook-url"))
 	setupGracefulShutdown(fiberApp)
@@ -123,6 +124,21 @@ func initializeDatabase(c *cli.Context) {
 	}
 
 	db = database.NewBboltdb(c.String("data"))
+}
+
+func logDatabaseStatus() {
+	if db == nil {
+		logger.Error("Database status: not initialized")
+		return
+	}
+
+	count, err := db.CountAll()
+	if err != nil {
+		logger.Errorf("Database status: unavailable, type: %s, error: %v", reflect.TypeOf(db), err)
+		return
+	}
+
+	logger.Infof("Database status: connected, type: %s, records: %d", reflect.TypeOf(db), count)
 }
 
 func setupGracefulShutdown(fiberApp *fiber.App) {
