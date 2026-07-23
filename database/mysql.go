@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
+	"fmt"
 	"os"
 	"strings"
 
@@ -16,16 +17,19 @@ import (
 type MySQL struct {
 }
 
-var mysqlDB *sql.DB
+var (
+	mysqlDB              *sql.DB
+	mysqlDeviceKeyColumn = "device_key"
+)
 
 const (
 	dbSchema = "" +
 		"CREATE TABLE IF NOT EXISTS `devices` (" +
 		"    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT," +
-		"    `key` VARCHAR(255) NOT NULL," +
+		"    `device_key` VARCHAR(255) NOT NULL," +
 		"    `token` VARCHAR(255) NOT NULL," +
 		"    PRIMARY KEY (`id`)," +
-		"    UNIQUE KEY `key` (`key`)" +
+		"    UNIQUE KEY `device_key` (`device_key`)" +
 		") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
 )
 
@@ -41,7 +45,58 @@ func NewMySQL(dsn string) Database {
 	}
 
 	mysqlDB = db
+	mysqlDeviceKeyColumn, err = detectMySQLDeviceKeyColumn(db)
+	if err != nil {
+		logger.Fatalf("failed to detect MySQL device key column: %v", err)
+	}
+	logger.Infof("MySQL device key column: %s", mysqlDeviceKeyColumn)
+
 	return &MySQL{}
+}
+
+func detectMySQLDeviceKeyColumn(db *sql.DB) (string, error) {
+	for _, column := range []string{"device_key", "key"} {
+		var count int
+		err := db.QueryRow(
+			"SELECT COUNT(1) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'devices' AND COLUMN_NAME = ?",
+			column,
+		).Scan(&count)
+		if err != nil {
+			return "", err
+		}
+		if count > 0 {
+			return column, nil
+		}
+	}
+
+	return "", fmt.Errorf("devices table must contain device_key or key column")
+}
+
+func mysqlDeviceKeyColumnName() string {
+	return "`" + mysqlDeviceKeyColumn + "`"
+}
+
+func mysqlDeviceTokenByKeyQuery() string {
+	return fmt.Sprintf("SELECT `token` FROM `devices` WHERE %s=? ORDER BY `id` DESC LIMIT 1", mysqlDeviceKeyColumnName())
+}
+
+func mysqlUpdateDeviceTokenByKeyQuery() string {
+	return fmt.Sprintf("UPDATE `devices` SET `token`=? WHERE %s=?", mysqlDeviceKeyColumnName())
+}
+
+func mysqlDeviceExistsByKeyQuery() string {
+	return fmt.Sprintf("SELECT COUNT(1) FROM `devices` WHERE %s=?", mysqlDeviceKeyColumnName())
+}
+
+func mysqlInsertDeviceTokenByKeyQuery() string {
+	return fmt.Sprintf(
+		"INSERT INTO `devices` (%s,`token`) VALUES (?,?) ON DUPLICATE KEY UPDATE `token`=?",
+		mysqlDeviceKeyColumnName(),
+	)
+}
+
+func mysqlDeleteDeviceByKeyQuery() string {
+	return fmt.Sprintf("DELETE FROM `devices` WHERE %s=?", mysqlDeviceKeyColumnName())
 }
 
 func NewMySQLWithTLS(dsn, tlsName, caPath, certPath, keyPath string, isSkipVerify bool) Database {
@@ -103,7 +158,7 @@ func (d *MySQL) CountAll() (int, error) {
 
 func (d *MySQL) DeviceTokenByKey(key string) (string, error) {
 	var token string
-	err := mysqlDB.QueryRow("SELECT `token` FROM `devices` WHERE `key`=? ", key).Scan(&token)
+	err := mysqlDB.QueryRow(mysqlDeviceTokenByKeyQuery(), key).Scan(&token)
 	if err != nil {
 		return "", err
 	}
@@ -117,7 +172,18 @@ func (d *MySQL) SaveDeviceTokenByKey(key, token string) (string, error) {
 		key = shortuuid.New()
 	}
 
-	_, err := mysqlDB.Exec("INSERT INTO `devices` (`key`,`token`) VALUES (?,?) ON DUPLICATE KEY UPDATE `token`=?", key, token, token)
+	var count int
+	if err := mysqlDB.QueryRow(mysqlDeviceExistsByKeyQuery(), key).Scan(&count); err != nil {
+		return "", err
+	}
+	if count > 0 {
+		if _, err := mysqlDB.Exec(mysqlUpdateDeviceTokenByKeyQuery(), token, key); err != nil {
+			return "", err
+		}
+		return key, nil
+	}
+
+	_, err := mysqlDB.Exec(mysqlInsertDeviceTokenByKeyQuery(), key, token, token)
 	if err != nil {
 		return "", err
 	}
@@ -126,7 +192,7 @@ func (d *MySQL) SaveDeviceTokenByKey(key, token string) (string, error) {
 }
 
 func (d *MySQL) DeleteDeviceByKey(key string) error {
-	_, err := mysqlDB.Exec("DELETE FROM `devices` WHERE `key`=?", key)
+	_, err := mysqlDB.Exec(mysqlDeleteDeviceByKeyQuery(), key)
 	return err
 }
 
