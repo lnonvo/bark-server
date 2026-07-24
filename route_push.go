@@ -296,14 +296,34 @@ func push(params map[string]interface{}) (int, error) {
 		return 500, fmt.Errorf("push failed: %v", err)
 	}
 
+	pushParams := make(map[string]interface{}, len(msg.ExtParams)+2)
+	for key, value := range msg.ExtParams {
+		pushParams[key] = value
+	}
+	if msg.Subtitle != "" {
+		pushParams["subtitle"] = msg.Subtitle
+	}
+	if msg.Sound != "" {
+		pushParams["sound"] = msg.Sound
+	}
+
+	category := ""
+	if value, ok := msg.ExtParams["category"]; ok {
+		category = fmt.Sprint(value)
+	}
+	now := time.Now().UTC()
 	if err := db.SaveMessage(&database.Message{
+		DeviceKey:   msg.DeviceKey,
+		Category:    category,
+		Title:       msg.Title,
+		Body:        msg.Body,
+		PushParams:  pushParams,
 		CreatedBy:   msg.DeviceKey,
-		CreatedTime: time.Now().UTC(),
+		CreatedTime: now,
 		UpdatedBy:   msg.DeviceKey,
-		UpdatedTime: time.Now().UTC(),
+		UpdatedTime: now,
 		Version:     1,
 		Deleted:     0,
-		Content:     database.BuildMessageContent(msg.Title, msg.Subtitle, msg.Body),
 	}); err != nil {
 		logger.Errorf("failed to persist pushed message: %v", err)
 	}

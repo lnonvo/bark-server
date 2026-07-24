@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -35,7 +36,7 @@ const (
 )
 
 func mysqlMessageInsertQuery() string {
-	return "INSERT INTO `message` (`created_by`,`created_time`,`updated_by`,`updated_time`,`version`,`deleted`,`content`) VALUES (?,?,?,?,?,?,?)"
+	return "INSERT INTO `message` (`device_key`,`category`,`title`,`body`,`push_params`,`created_by`,`created_time`,`updated_by`,`updated_time`,`version`,`deleted`) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
 }
 
 func NewMySQL(dsn string) Database {
@@ -201,6 +202,15 @@ func (d *MySQL) SaveMessage(message *Message) error {
 		return fmt.Errorf("message is nil")
 	}
 
+	var pushParams []byte
+	if message.PushParams != nil {
+		var err error
+		pushParams, err = json.Marshal(message.PushParams)
+		if err != nil {
+			return fmt.Errorf("failed to marshal message push params: %w", err)
+		}
+	}
+
 	createdTime := message.CreatedTime
 	if createdTime.IsZero() {
 		createdTime = time.Now().UTC()
@@ -222,7 +232,20 @@ func (d *MySQL) SaveMessage(message *Message) error {
 		version = 1
 	}
 
-	_, err := mysqlDB.Exec(mysqlMessageInsertQuery(), createdBy, createdTime, updatedBy, updatedTime, version, message.Deleted, message.Content)
+	_, err := mysqlDB.Exec(
+		mysqlMessageInsertQuery(),
+		message.DeviceKey,
+		message.Category,
+		message.Title,
+		message.Body,
+		pushParams,
+		createdBy,
+		createdTime,
+		updatedBy,
+		updatedTime,
+		version,
+		message.Deleted,
+	)
 	return err
 }
 

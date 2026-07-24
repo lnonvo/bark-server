@@ -49,30 +49,8 @@ func TestMySQLDeviceKeyQueries(t *testing.T) {
 }
 
 func TestMySQLMessageInsertQuery(t *testing.T) {
-	want := "INSERT INTO `message` (`created_by`,`created_time`,`updated_by`,`updated_time`,`version`,`deleted`,`content`) VALUES (?,?,?,?,?,?,?)"
+	want := "INSERT INTO `message` (`device_key`,`category`,`title`,`body`,`push_params`,`created_by`,`created_time`,`updated_by`,`updated_time`,`version`,`deleted`) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
 	if got := mysqlMessageInsertQuery(); got != want {
 		t.Fatalf("mysqlMessageInsertQuery() = %q, want %q", got, want)
-	}
-}
-
-func TestBuildMessageContent(t *testing.T) {
-	tests := []struct {
-		name                  string
-		title, subtitle, body string
-		want                  string
-	}{
-		{name: "body", title: "title", subtitle: "subtitle", body: "body", want: "body"},
-		{name: "title and subtitle", title: "title", subtitle: "subtitle", want: "title\nsubtitle"},
-		{name: "title", title: "title", want: "title"},
-		{name: "subtitle", subtitle: "subtitle", want: "subtitle"},
-		{name: "empty", want: "Empty Message"},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			if got := BuildMessageContent(test.title, test.subtitle, test.body); got != test.want {
-				t.Fatalf("BuildMessageContent() = %q, want %q", got, test.want)
-			}
-		})
 	}
 }
