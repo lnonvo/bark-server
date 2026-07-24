@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -23,7 +24,9 @@ var app *fiber.App
 
 func TestMain(m *testing.M) {
 	if deviceToken == "" {
-		panic("deviceToken is not set")
+		db = database.NewMemBase()
+		app = NewServer()
+		os.Exit(m.Run())
 	}
 	db = database.NewMemBase()
 	db.SaveDeviceTokenByKey(key, deviceToken)
@@ -294,6 +297,9 @@ func NewServer() *fiber.App {
 }
 
 func Endpoint(t *testing.T, tc []APITestCase) {
+	if deviceToken == "" {
+		t.Skip("deviceToken is not set")
+	}
 	for _, tt := range tc {
 		t.Run(tt.Name, func(t *testing.T) {
 			req, _ := http.NewRequest(tt.Method, tt.URL, bytes.NewBufferString(tt.Body))

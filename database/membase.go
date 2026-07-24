@@ -37,6 +37,10 @@ func (d *MemBase) SaveDeviceTokenByKey(key, token string) (string, error) {
 	return key, nil
 }
 
+func (d *MemBase) SaveMessage(message *Message) error {
+	return nil
+}
+
 func (d *MemBase) DeleteDeviceByKey(key string) error {
 	if key != "" && key != cacheKey {
 		return fmt.Errorf("key not found")

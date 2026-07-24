@@ -92,6 +92,11 @@ func (d *BboltDB) SaveDeviceTokenByKey(key, deviceToken string) (string, error) 
 	return key, nil
 }
 
+// SaveMessage is a no-op for the bbolt backend.
+func (d *BboltDB) SaveMessage(message *Message) error {
+	return nil
+}
+
 // DeleteDeviceByKey delete device of specified key
 func (d *BboltDB) DeleteDeviceByKey(key string) error {
 	err := db.Update(func(tx *bbolt.Tx) error {

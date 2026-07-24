@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
@@ -32,6 +33,10 @@ const (
 		"    UNIQUE KEY `device_key` (`device_key`)" +
 		") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
 )
+
+func mysqlMessageInsertQuery() string {
+	return "INSERT INTO `message` (`created_by`,`created_time`,`updated_by`,`updated_time`,`version`,`deleted`,`content`) VALUES (?,?,?,?,?,?,?)"
+}
 
 func NewMySQL(dsn string) Database {
 	db, err := sql.Open("mysql", dsn)
@@ -189,6 +194,36 @@ func (d *MySQL) SaveDeviceTokenByKey(key, token string) (string, error) {
 	}
 
 	return key, nil
+}
+
+func (d *MySQL) SaveMessage(message *Message) error {
+	if message == nil {
+		return fmt.Errorf("message is nil")
+	}
+
+	createdTime := message.CreatedTime
+	if createdTime.IsZero() {
+		createdTime = time.Now().UTC()
+	}
+	updatedTime := message.UpdatedTime
+	if updatedTime.IsZero() {
+		updatedTime = createdTime
+	}
+	createdBy := message.CreatedBy
+	if createdBy == "" {
+		createdBy = "system"
+	}
+	updatedBy := message.UpdatedBy
+	if updatedBy == "" {
+		updatedBy = createdBy
+	}
+	version := message.Version
+	if version == 0 {
+		version = 1
+	}
+
+	_, err := mysqlDB.Exec(mysqlMessageInsertQuery(), createdBy, createdTime, updatedBy, updatedTime, version, message.Deleted, message.Content)
+	return err
 }
 
 func (d *MySQL) DeleteDeviceByKey(key string) error {

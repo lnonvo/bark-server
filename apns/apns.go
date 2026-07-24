@@ -3,6 +3,7 @@ package apns
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net/http"
 	"runtime"
@@ -144,7 +145,7 @@ func Push(msg *PushMessage) (code int, err error) {
 		return 500, err
 	}
 	if resp.StatusCode != 200 {
-		return resp.StatusCode, fmt.Errorf(resp.Reason)
+		return resp.StatusCode, errors.New(resp.Reason)
 	}
 	return 200, nil
 }

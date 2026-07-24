@@ -5,10 +5,13 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gofiber/fiber/v2/utils"
 
 	"github.com/finb/bark-server/v2/apns"
+	"github.com/finb/bark-server/v2/database"
+	"github.com/mritd/logger"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -291,6 +294,18 @@ func push(params map[string]interface{}) (int, error) {
 	}
 	if err != nil {
 		return 500, fmt.Errorf("push failed: %v", err)
+	}
+
+	if err := db.SaveMessage(&database.Message{
+		CreatedBy:   msg.DeviceKey,
+		CreatedTime: time.Now().UTC(),
+		UpdatedBy:   msg.DeviceKey,
+		UpdatedTime: time.Now().UTC(),
+		Version:     1,
+		Deleted:     0,
+		Content:     database.BuildMessageContent(msg.Title, msg.Subtitle, msg.Body),
+	}); err != nil {
+		logger.Errorf("failed to persist pushed message: %v", err)
 	}
 
 	// Fire webhook asynchronously after successful push
